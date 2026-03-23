@@ -47,7 +47,22 @@ class Value():
         out._backward = _backward
 
         return out
+    
+    def backward(self):
+        self.grad = 1.0
+        topo = []
+        visited = set()
 
+        def build_topo(self):
+            if self not in visited:
+                visited.add(self)
+                for v in self._prev:
+                    build_topo(v)
+                topo.append(self)
+        
+        build_topo(self)
+        for node in reversed(topo):
+            node._backward()
 
 def trace(root):
     nodes, edges = set(), set()
@@ -89,12 +104,6 @@ f = d+c; f.label='f'
 g = f+e; g.label = 'g'
 o = g.tanh(); o.label = 'o'
 
-o.grad = 1.0
-o._backward()
-g._backward()
-e._backward()
-f._backward()
-d._backward()
-c._backward()
+o.backward()
 dot = draw_dot(o)
 dot.render("graph.dot", view=True)
