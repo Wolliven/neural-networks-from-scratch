@@ -8,6 +8,7 @@ class Value():
 
     def __init__(self, data, _children=(), _op='', label=''):
         self.data = data
+        self.grad = 0.0
         self._prev = set(_children)
         self._op = _op
         self.label = label
@@ -22,13 +23,13 @@ class Value():
     def __mul__(self, other):
         out = Value(self.data*other.data, (self, other), '*')
         return out
+    
+    def tanh(self):
+        x = self.data
+        t = (math.exp(2*x) - 1)/(math.exp(2*x) + 1)
+        out = Value(t, (self, ), 'tanh')
 
-
-a = Value(2.0, label='a')
-b = Value(-6.0, label='b')
-c = a*b; c.label = 'c'
-d = Value(5.0, label='d')
-L = d+c; L.label = 'L'
+        return out
 
 
 def trace(root):
@@ -49,12 +50,11 @@ def draw_dot(root):
     for n in nodes:
         uid = str(id(n))
         # for any value in the graph, create a rectangular ('record') node for it
-        dot.node(name = uid, label = "{ %s | data %.4f}" % (n.label, n.data), shape='record')
+        dot.node(name = uid, label = "{ %s | data %.4f | grad %.4f}" % (n.label, n.data, n.grad), shape='record')
         if n._op:
         # if this value is a result of some operation, create an op node for it
             dot.node(name = uid + n._op, label = n._op)
         # and connect this node to it
-        if n._op:
             dot.edge(uid + n._op, uid)
 
     for n1, n2 in edges:
@@ -63,5 +63,14 @@ def draw_dot(root):
 
     return dot
 
-dot = draw_dot(L)
+a = Value(2.0, label='a')
+b = Value(-4.0, label='b')
+c = a*b; c.label = 'c'
+d = Value(5.0, label='d')
+e = Value(3.0, label='e')
+f = d+c; f.label='f'
+g = f*e; g.label = 'g'
+o = g.tanh(); o.label = 'o'
+
+dot = draw_dot(o)
 dot.render("graph.dot", view=True)
