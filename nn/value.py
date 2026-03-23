@@ -9,6 +9,7 @@ class Value():
     def __init__(self, data, _children=(), _op='', label=''):
         self.data = data
         self.grad = 0.0
+        self._backward = lambda: None
         self._prev = set(_children)
         self._op = _op
         self.label = label
@@ -18,16 +19,32 @@ class Value():
 
     def __add__(self, other):
         out = Value(self.data + other.data, (self, other), '+')
+
+        def _backward():
+            self.grad += out.grad
+            other.grad += out.grad
+        out._backward = _backward
+
         return out
     
     def __mul__(self, other):
         out = Value(self.data*other.data, (self, other), '*')
+
+        def _backward():
+            self.grad += out.grad * other.data
+            other.grad += out.grad * self.data
+        out._backward = _backward
+
         return out
     
     def tanh(self):
         x = self.data
         t = (math.exp(2*x) - 1)/(math.exp(2*x) + 1)
         out = Value(t, (self, ), 'tanh')
+
+        def _backward():
+            self.grad += (1 - t**2) * out.grad
+        out._backward = _backward
 
         return out
 
@@ -64,13 +81,20 @@ def draw_dot(root):
     return dot
 
 a = Value(2.0, label='a')
-b = Value(-4.0, label='b')
+b = Value(-3.0, label='b')
 c = a*b; c.label = 'c'
 d = Value(5.0, label='d')
-e = Value(3.0, label='e')
+e = Value(1.88, label='e')
 f = d+c; f.label='f'
-g = f*e; g.label = 'g'
+g = f+e; g.label = 'g'
 o = g.tanh(); o.label = 'o'
 
+o.grad = 1.0
+o._backward()
+g._backward()
+e._backward()
+f._backward()
+d._backward()
+c._backward()
 dot = draw_dot(o)
 dot.render("graph.dot", view=True)
